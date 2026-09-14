@@ -3,6 +3,11 @@ Convierte data/cie10_full.csv (id, code, description, ...) a
 data/cie10_full.json, calculando el capítulo CIE-10 de cada código para
 que MongoDB no tenga que recalcularlo en cada consulta.
 
+El id de cada documento es un UUID5 determinístico derivado del código: si
+este script se corre de nuevo sobre un CSV actualizado, cada código
+conserva siempre el mismo UUID (no rompe referencias que ya usen ese id
+como llave foránea en otros sistemas).
+
 Uso:
     python scripts/build_seed.py
 """
@@ -10,10 +15,14 @@ Uso:
 import csv
 import json
 import re
+import uuid
 from pathlib import Path
 
 SRC = Path(__file__).parent.parent / "data" / "cie10_full.csv"
 DST = Path(__file__).parent.parent / "data" / "cie10_full.json"
+
+# Namespace fijo de esta app (generado una sola vez, no cambiar).
+APP_NAMESPACE = uuid.UUID("6f1b1a6a-9c2e-4b8a-9e2a-2f7b6d4c9a10")
 
 CHAPTERS = [
     ("A", 0, "B", 99, "Ciertas enfermedades infecciosas y parasitarias"),
@@ -63,7 +72,7 @@ def main():
         for row in reader:
             code = row["code"].strip()
             docs.append({
-                "id": int(row["id"]),
+                "id": str(uuid.uuid5(APP_NAMESPACE, code)),
                 "code": code,
                 "description": row["description"].strip(),
                 "chapter": get_chapter(code),

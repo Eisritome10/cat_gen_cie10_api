@@ -54,7 +54,7 @@ app.add_middleware(
 
 
 class Cie10Code(BaseModel):
-    id: int
+    id: str
     code: str
     description: str
     chapter: str
@@ -142,7 +142,7 @@ def get_codes(
     total = _collection.count_documents(filters)
     docs = (
         _collection.find(filters, {"_id": 0})
-        .sort("id", 1)
+        .sort("code", 1)
         .skip(offset)
         .limit(limit)
     )

@@ -32,13 +32,20 @@ Variables de entorno (todas opcionales, con default para desarrollo local):
 | `MONGO_DB` | `cie10` | Nombre de la base de datos |
 | `MONGO_COLLECTION` | `codes` | Nombre de la colección |
 
+### El campo `id`
+
+`id` es un **UUID** (no un entero secuencial), generado de forma
+determinística a partir del `code` (UUID5). Si el CSV se regenera desde la
+fuente original, cada código conserva siempre el mismo UUID — no se rompen
+referencias que otros sistemas ya guarden con ese id como llave foránea.
+
 ### Regenerar la semilla desde un CSV nuevo
 
 Si el catálogo cambia (nuevo CSV con columnas `id,code,description,...`):
 
 ```bash
 # 1. Copia el CSV a data/cie10_full.csv
-# 2. Regenera el JSON (recalcula el capítulo de cada código)
+# 2. Regenera el JSON (recalcula el capítulo y el UUID de cada código)
 python scripts/build_seed.py
 # 3. Borra la colección en MongoDB para que se vuelva a poblar en el próximo arranque
 ```
@@ -99,7 +106,7 @@ curl http://127.0.0.1:8000/codes/J189
    - Un buscador libre (`GET /codes?q=...`) con debounce, para cuando el
      usuario ya conoce parte del código o la descripción, sin necesidad de
      navegar por capítulo.
-2. El `id` de cada registro es el mismo `id` del CSV original, útil para
+2. El `id` (UUID) de cada registro es estable entre despliegues, útil para
    relacionar con otras tablas que ya usen ese id como llave foránea.
 
 ## Desplegar en Coolify
