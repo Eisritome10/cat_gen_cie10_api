@@ -10,10 +10,11 @@ viven en **MongoDB**.
 maternal_api/
 ├── main.py                # API FastAPI (lee/escribe en MongoDB)
 ├── requirements.txt
+├── Dockerfile              # build usado por Coolify para desplegar
 ├── scripts/
 │   └── build_seed.py      # genera data/cie10_full.json a partir de un CSV crudo
 ├── data/
-│   └── cie10_full.json    # catálogo semilla, con capítulo ya calculado
+│   └── cie10_full.json    # catálogo semilla, con capítulo y UUID ya calculados
 └── README.md
 ```
 
@@ -55,8 +56,11 @@ python scripts/build_seed.py
 1. Levanta un MongoDB local (si no tienes uno corriendo ya):
 
 ```bash
-docker run -d --name cie10-mongo-local -p 27017:27017 mongo:7
+docker run -d --name cie10-mongo-local -p 27017:27017 mongo:4.4
 ```
+
+Se usa `mongo:4.4` (no una versión más nueva) porque es la misma que corre
+en producción — ver la nota de compatibilidad en la sección de Coolify.
 
 2. Instala dependencias y arranca la API:
 
@@ -114,8 +118,18 @@ curl http://127.0.0.1:8000/codes/J189
 1. **Crea el recurso de MongoDB** en el mismo proyecto de Coolify (igual que
    la base MySQL que ya tienes ahí): *New resource → Database → MongoDB*.
    Coolify te da una cadena de conexión interna una vez que arranca (algo
-   como `mongodb://usuario:password@nombre-del-servicio:27017`).
-2. **En la app**, entra a *Settings → Environment variables* y agrega:
+   como `mongodb://root:password@nombre-del-servicio:27017/?directConnection=true`).
+
+   > **Compatibilidad de CPU**: MongoDB 5.0+ requiere que el servidor
+   > tenga soporte de instrucciones **AVX**. Si el servidor no lo tiene
+   > (común en VPS económicos), el contenedor crashea en bucle con
+   > `Illegal instruction (core dumped)`. En ese caso, cambia la imagen a
+   > una versión ≤ 4.4 en *General → Container image* (campo de la imagen,
+   > donde por defecto dice `mongo:7`) y reinicia el recurso.
+
+2. **La app** despliega con **Build Pack: Dockerfile** (ya está en la raíz
+   del repo) y **Port: 8000**. En *Settings → Environment Variables*
+   agrega:
    - `MONGO_URI` = la cadena de conexión interna del paso 1
    - `MONGO_DB` = `cie10` (o el nombre que prefieras)
    - `MONGO_COLLECTION` = `codes`
@@ -125,9 +139,28 @@ curl http://127.0.0.1:8000/codes/J189
 4. Verifica con `curl https://<dominio-en-coolify>/chapters` que responda
    los 22 capítulos.
 
+### Vaciar/re-sembrar la colección en producción
+
+Si cambias la semilla (`data/cie10_full.json`) y necesitas que producción
+la vuelva a cargar, hay que vaciar la colección manualmente — la API solo
+siembra si está vacía.
+
+1. En el recurso `cie10-mongo-db` en Coolify → **Terminal**.
+2. La imagen `mongo:4.4` trae el cliente clásico `mongo` (no `mongosh`).
+   Autentícate con el usuario `root` y la contraseña de la cadena de
+   conexión interna:
+   ```
+   mongo cie10 -u root -p 'TU_PASSWORD' --authenticationDatabase admin --eval "db.codes.drop()"
+   ```
+   (ajusta `cie10` y `codes` si usaste otros nombres en `MONGO_DB` /
+   `MONGO_COLLECTION`)
+3. **Redeploy/Restart** la app para que la vuelva a poblar.
+
 ## Siguientes pasos sugeridos
 
 - Agregar autenticación (API key o JWT) antes de exponerla en producción.
+- El CORS está abierto (`allow_origins=["*"]`) en `main.py`; si el frontend
+  ya tiene un dominio fijo, conviene restringirlo a ese dominio.
 - Si necesitas una vista especializada (ej. un subconjunto de códigos para
   un caso de uso puntual), se puede agregar un endpoint que filtre por
   prefijos de código sobre la misma colección, sin duplicar datos.
