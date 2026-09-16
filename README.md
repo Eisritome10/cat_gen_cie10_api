@@ -113,6 +113,23 @@ curl http://127.0.0.1:8000/codes/J189
 2. El `id` (UUID) de cada registro es estable entre despliegues, útil para
    relacionar con otras tablas que ya usen ese id como llave foránea.
 
+## Producción
+
+URL actual: `http://61ymibxfmomlho8gavsxanyd.161.132.37.215.sslip.io/`
+(Swagger en `/docs`).
+
+Corre en el servidor `srv-215-wireguard` de Coolify (proyecto `HRLoreto` →
+`production`). Se movió ahí desde `srv-137` para liberar espacio en ese
+servidor, clonando los recursos (`cat_gen_cie10_api` y `cie10-mongo-db`) y
+apuntando el `MONGO_URI` de la app a la cadena de conexión interna del
+Mongo clonado.
+
+Pendiente: los recursos en Coolify quedaron con el nombre de clon
+(`clone-of-cat_gen_cie10_api`, `cie10-mongo-db-clone-...`) — conviene
+renombrarlos (quitar el prefijo/sufijo "clone") una vez que se confirme que
+nadie sigue usando la URL vieja del `.137`, y entonces sí dar de baja los
+recursos originales en `srv-137`.
+
 ## Desplegar en Coolify
 
 1. **Crea el recurso de MongoDB** en el mismo proyecto de Coolify (igual que
